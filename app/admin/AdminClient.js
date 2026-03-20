@@ -4,29 +4,24 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import Sidebar from '@/app/components/Sidebar';
 
 const ROLES = ['employee', 'manager', 'hr_admin', 'super_admin'];
-
+const ROLE_LABELS = { super_admin: 'Super Admin', hr_admin: 'HR Admin', manager: 'Manager', employee: 'Empleado' };
 const ROLE_COLORS = {
-  super_admin: 'bg-purple-500/15 text-purple-300 border-purple-500/25',
-  hr_admin: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25',
-  manager: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
-  employee: 'bg-white/5 text-white/40 border-white/10',
+  super_admin: { bg: '#F5F3FF', color: '#6D28D9' },
+  hr_admin: { bg: '#EFF6FF', color: '#1D4ED8' },
+  manager: { bg: '#F0FDF4', color: '#15803D' },
+  employee: { bg: '#F5F5F4', color: '#78716C' },
 };
 
-const ROLE_LABELS = {
-  super_admin: 'Super Admin',
-  hr_admin: 'HR Admin',
-  manager: 'Manager',
-  employee: 'Empleado',
-};
-
-export default function AdminClient({ currentUser, users: initialUsers }) {
+export default function AdminClient({ currentUser, users: initialUsers, profile }) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState(null);
   const [toast, setToast] = useState(null);
+  const [activeTab, setActiveTab] = useState('users');
 
   const filtered = users.filter(u =>
     u.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -61,173 +56,188 @@ export default function AdminClient({ currentUser, users: initialUsers }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white" style={{ fontFamily: 'sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F5F4', fontFamily: 'system-ui, -apple-system, sans-serif', WebkitFontSmoothing: 'antialiased' }}>
+      <Sidebar user={currentUser} profile={profile} />
 
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: -16, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -16, x: '-50%' }}
+              style={{
+                position: 'fixed', top: 20, left: '50%', zIndex: 100,
+                padding: '10px 20px', borderRadius: 10,
+                background: toast.type === 'error' ? '#FEF2F2' : '#F0FDF4',
+                border: `1px solid ${toast.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
+                color: toast.type === 'error' ? '#DC2626' : '#15803D',
+                fontSize: 13.5, fontWeight: 500, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              }}
+            >
+              {toast.msg}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 40px' }}>
+          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-lg border ${
-              toast.type === 'error'
-                ? 'bg-red-500/20 border-red-500/30 text-red-300'
-                : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-            }`}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ marginBottom: 36 }}
           >
-            {toast.msg}
+            <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.03em' }}>
+              Administración
+            </h1>
+            <p style={{ margin: 0, fontSize: 14, color: '#78716C' }}>
+              Condor Agency Performance Review · {users.length} usuarios
+            </p>
           </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-10 bg-[#0f0f1a]/80 backdrop-blur-xl border-b border-white/[0.06] px-8 py-4 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-white/40 hover:text-white/70 transition-colors text-sm flex items-center gap-2"
+          {/* Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E7E5E4', marginBottom: 28 }}
           >
-            ← Dashboard
-          </button>
-          <div className="w-px h-4 bg-white/10" />
-          <div>
-            <h1 className="text-lg font-bold text-white">Panel de Administración</h1>
-            <p className="text-white/40 text-xs">{users.length} usuarios registrados</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/25">
-            Super Admin
-          </span>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-xs font-bold">
-            {initials(null, currentUser.email)}
-          </div>
-        </div>
-      </motion.header>
+            {[
+              { key: 'users', label: 'Usuarios' },
+              { key: 'templates', label: 'Plantillas de evaluación' },
+            ].map((t) => {
+              const active = activeTab === t.key;
+              return (
+                <button key={t.key} onClick={() => {
+                  if (t.key === 'templates') router.push('/admin/templates');
+                  else setActiveTab(t.key);
+                }} style={{
+                  padding: '10px 4px', marginRight: 20, border: 'none',
+                  borderBottom: active ? '2px solid #0C0A09' : '2px solid transparent',
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 13.5, fontWeight: active ? 600 : 400,
+                  color: active ? '#0C0A09' : '#78716C',
+                  marginBottom: -1,
+                }}>
+                  {t.label}
+                </button>
+              );
+            })}
+          </motion.div>
 
-      <div className="max-w-6xl mx-auto px-8 py-8 space-y-6">
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}
+          >
+            {Object.entries(ROLE_LABELS).map(([role, label], i) => {
+              const count = users.filter(u => u.role === role).length;
+              const rc = ROLE_COLORS[role];
+              return (
+                <motion.div key={role}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12 + i * 0.05 }}
+                  style={{ background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 12, padding: '18px 20px' }}
+                >
+                  <p style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.03em' }}>{count}</p>
+                  <span style={{ fontSize: 12, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: rc.bg, color: rc.color }}>
+                    {label}s
+                  </span>
+                </motion.div>
+              );
+            })}
+          </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          {Object.entries(ROLE_LABELS).map(([role, label], i) => {
-            const count = users.filter(u => u.role === role).length;
-            return (
-              <motion.div
-                key={role}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
-                className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5"
-              >
-                <p className="text-3xl font-bold text-white mb-1">{count}</p>
-                <p className="text-white/40 text-xs">{label}s</p>
-              </motion.div>
-            );
-          })}
-        </div>
+          {/* Table */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.2 }}
+            style={{ background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 12, overflow: 'hidden' }}
+          >
+            {/* Search */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #F5F5F4', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A8A29E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                type="text" placeholder="Buscar por nombre, email o departamento..."
+                value={search} onChange={e => setSearch(e.target.value)}
+                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: '#0C0A09', background: 'transparent' }}
+              />
+              {search && (
+                <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A8A29E', fontSize: 13 }}>✕</button>
+              )}
+            </div>
 
-        {/* Search + Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden"
-        >
-          {/* Search bar */}
-          <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/30 flex-shrink-0">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Buscar por nombre, email o departamento..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="text-white/30 hover:text-white/60 transition-colors text-xs">
-                ✕
-              </button>
-            )}
-          </div>
+            {/* Head */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1.5fr',
+              padding: '9px 20px', background: '#FAFAF9', borderBottom: '1px solid #F5F5F4',
+              fontSize: 11.5, fontWeight: 500, color: '#A8A29E', letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}>
+              <span>Usuario</span><span>Email</span><span>Departamento</span><span>Registro</span><span>Rol</span>
+            </div>
 
-          {/* Table header */}
-          <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1.5fr] px-6 py-3 text-xs text-white/30 font-medium uppercase tracking-wider border-b border-white/[0.04]">
-            <span>Usuario</span>
-            <span>Email</span>
-            <span>Departamento</span>
-            <span>Registro</span>
-            <span>Rol</span>
-          </div>
-
-          {/* Rows */}
-          <div className="divide-y divide-white/[0.04]">
+            {/* Rows */}
             {filtered.length === 0 ? (
-              <div className="px-6 py-12 text-center text-white/30 text-sm">
+              <div style={{ padding: '48px 20px', textAlign: 'center', color: '#A8A29E', fontSize: 14 }}>
                 No se encontraron usuarios
               </div>
-            ) : filtered.map((user, i) => (
-              <motion.div
-                key={user.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.35 + i * 0.04 }}
-                className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1.5fr] px-6 py-4 items-center hover:bg-white/[0.02] transition-colors"
-              >
-                {/* Name */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/40 to-purple-600/40 border border-white/10 flex items-center justify-center text-xs font-bold text-white/80 flex-shrink-0">
-                    {initials(user.full_name, user.email)}
+            ) : filtered.map((u, i) => {
+              const rc = ROLE_COLORS[u.role] || ROLE_COLORS.employee;
+              return (
+                <motion.div key={u.id}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  transition={{ delay: 0.25 + i * 0.03 }}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1.5fr',
+                    padding: '13px 20px', alignItems: 'center',
+                    borderBottom: i < filtered.length - 1 ? '1px solid #FAFAF9' : 'none',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#FAFAF9'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', background: '#1C1917',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 600, color: '#78716C', flexShrink: 0,
+                    }}>{initials(u.full_name, u.email)}</div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: '#0C0A09' }}>{u.full_name || '—'}</p>
+                      <p style={{ margin: '1px 0 0', fontSize: 12, color: '#A8A29E' }}>{u.job_title || '—'}</p>
+                    </div>
                   </div>
+                  <p style={{ margin: 0, fontSize: 13, color: '#78716C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 16 }}>{u.email}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: '#78716C' }}>{u.department || '—'}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#A8A29E' }}>
+                    {new Date(u.created_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </p>
                   <div>
-                    <p className="text-sm font-medium text-white/90">{user.full_name || '—'}</p>
-                    <p className="text-xs text-white/30">{user.job_title || '—'}</p>
+                    {updating === u.id ? (
+                      <span style={{ fontSize: 12.5, color: '#A8A29E' }}>Guardando...</span>
+                    ) : u.id === currentUser.id ? (
+                      <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: rc.bg, color: rc.color }}>
+                        {ROLE_LABELS[u.role]}
+                      </span>
+                    ) : (
+                      <select
+                        value={u.role}
+                        onChange={e => handleRoleChange(u.id, e.target.value)}
+                        style={{
+                          border: '1px solid #E7E5E4', borderRadius: 8, padding: '5px 10px',
+                          fontSize: 12.5, color: '#0C0A09', background: '#FFFFFF', cursor: 'pointer', outline: 'none',
+                        }}
+                      >
+                        {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                      </select>
+                    )}
                   </div>
-                </div>
-
-                {/* Email */}
-                <p className="text-sm text-white/50 truncate pr-4">{user.email}</p>
-
-                {/* Department */}
-                <p className="text-sm text-white/40">{user.department || '—'}</p>
-
-                {/* Date */}
-                <p className="text-xs text-white/30">
-                  {new Date(user.created_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: '2-digit' })}
-                </p>
-
-                {/* Role selector */}
-                <div className="flex items-center gap-2">
-                  {updating === user.id ? (
-                    <span className="text-xs text-white/30">Guardando...</span>
-                  ) : user.id === currentUser.id ? (
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium border ${ROLE_COLORS[user.role]}`}>
-                      {ROLE_LABELS[user.role]}
-                    </span>
-                  ) : (
-                    <select
-                      value={user.role}
-                      onChange={e => handleRoleChange(user.id, e.target.value)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70 outline-none hover:border-white/20 transition-colors cursor-pointer"
-                    >
-                      {ROLES.map(r => (
-                        <option key={r} value={r} className="bg-[#1a1a2e]">
-                          {ROLE_LABELS[r]}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
       </div>
     </div>
   );

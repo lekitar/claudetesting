@@ -1,75 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '@/app/components/Sidebar';
-
-const PENDING_ACTIONS = [
-  {
-    id: 'self-1',
-    type: 'self',
-    cycle: 'Q1 Performance Review 2026',
-    cycleId: 1,
-    dueDate: '31 mar 2026',
-    daysLeft: 11,
-    description: 'Reflexioná sobre tus logros, competencias y objetivos del trimestre.',
-    progress: 2,
-    totalSections: 5,
-  },
-  {
-    id: 'peer-2',
-    type: 'peer',
-    cycle: 'Q1 Performance Review 2026',
-    cycleId: 1,
-    subject: { name: 'Diego Fernández', role: 'Frontend Developer', avatar: 'DF' },
-    dueDate: '31 mar 2026',
-    daysLeft: 11,
-    description: 'Compartí tu perspectiva sobre el trabajo y la colaboración con Diego.',
-    progress: 0,
-    totalSections: 4,
-  },
-  {
-    id: 'manager-3',
-    type: 'manager',
-    cycle: 'Q1 Performance Review 2026',
-    cycleId: 1,
-    subject: { name: 'Valentina Gómez', role: 'QA Engineer', avatar: 'VG' },
-    dueDate: '31 mar 2026',
-    daysLeft: 11,
-    description: 'Evaluá el desempeño de Valentina en este ciclo trimestral.',
-    progress: 0,
-    totalSections: 5,
-  },
-  {
-    id: 'manager-4',
-    type: 'manager',
-    cycle: 'Q1 Performance Review 2026',
-    cycleId: 1,
-    subject: { name: 'Juan Pérez', role: 'Data Analyst', avatar: 'JP' },
-    dueDate: '31 mar 2026',
-    daysLeft: 11,
-    description: 'Evaluá el desempeño de Juan en este ciclo trimestral.',
-    progress: 0,
-    totalSections: 5,
-  },
-];
-
-const COMPLETED_ACTIONS = [
-  {
-    id: 'self-old',
-    type: 'self',
-    cycle: 'Evaluación Anual 2025',
-    cycleId: 3,
-    completedAt: '18 dic 2025',
-  },
-  {
-    id: 'peer-old',
-    type: 'peer',
-    cycle: 'Evaluación Anual 2025',
-    cycleId: 3,
-    subject: { name: 'Carlos López', role: 'Product Manager', avatar: 'CL' },
-    completedAt: '20 dic 2025',
-  },
-];
 
 const TYPE_CONFIG = {
   self: {
@@ -103,14 +36,39 @@ const TYPE_CONFIG = {
   },
 };
 
-function ActionCard({ action, onClick }) {
-  const tc = TYPE_CONFIG[action.type];
-  const pct = action.totalSections > 0 ? Math.round((action.progress / action.totalSections) * 100) : 0;
-  const hasProgress = action.progress > 0;
-  const isUrgent = action.daysLeft <= 7;
+function daysLeft(endDate) {
+  if (!endDate) return null;
+  const diff = Math.ceil((new Date(endDate) - Date.now()) / 1000 / 60 / 60 / 24);
+  return diff;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function initials(name) {
+  if (!name) return '??';
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function ActionCard({ review, onClick }) {
+  const tc = TYPE_CONFIG[review.type] || TYPE_CONFIG.manager;
+  const cycle = review.review_cycles;
+  const subject = review.type !== 'self' ? review.profiles : null;
+  const dl = daysLeft(cycle?.end_date);
+  const isUrgent = dl !== null && dl <= 7;
+  const hasProgress = review.status === 'in_progress';
+
+  const descriptions = {
+    self: 'Reflexioná sobre tus logros, competencias y objetivos del ciclo.',
+    peer: `Compartí tu perspectiva sobre el trabajo y la colaboración con ${subject?.full_name || 'este colaborador'}.`,
+    manager: `Evaluá el desempeño de ${subject?.full_name || 'este colaborador'} en este ciclo.`,
+  };
 
   return (
-    <div
+    <motion.div
+      whileTap={{ scale: 0.995 }}
       onClick={onClick}
       style={{
         background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 14,
@@ -131,59 +89,51 @@ function ActionCard({ action, onClick }) {
           <span style={{ color: '#78716C' }}>{tc.icon}</span>
           <span style={{ fontSize: 12, fontWeight: 500, color: '#78716C' }}>{tc.label}</span>
           <span style={{ color: '#D6D3D1', fontSize: 12 }}>·</span>
-          <span style={{ fontSize: 12, color: '#A8A29E' }}>{action.cycle}</span>
+          <span style={{ fontSize: 12, color: '#A8A29E' }}>{cycle?.name || '—'}</span>
         </div>
-        <span style={{
-          fontSize: 11.5, fontWeight: 500, padding: '2px 8px', borderRadius: 20,
-          background: isUrgent ? '#FFF7ED' : '#F5F5F4',
-          color: isUrgent ? '#C2410C' : '#78716C',
-        }}>
-          {action.daysLeft}d restantes
-        </span>
+        {dl !== null && (
+          <span style={{
+            fontSize: 11.5, fontWeight: 500, padding: '2px 8px', borderRadius: 20,
+            background: isUrgent ? '#FFF7ED' : '#F5F5F4',
+            color: isUrgent ? '#C2410C' : '#78716C',
+          }}>
+            {dl > 0 ? `${dl}d restantes` : dl === 0 ? 'Vence hoy' : 'Vencida'}
+          </span>
+        )}
       </div>
 
       {/* Subject (for peer/manager reviews) */}
-      {action.subject && (
+      {subject ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{
             width: 36, height: 36, borderRadius: '50%', background: '#1C1917',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 600, color: '#78716C', flexShrink: 0,
           }}>
-            {action.subject.avatar}
+            {initials(subject.full_name)}
           </div>
           <div>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.01em' }}>
-              {action.subject.name}
+              {subject.full_name || '—'}
             </p>
-            <p style={{ margin: '1px 0 0', fontSize: 12.5, color: '#A8A29E' }}>{action.subject.role}</p>
+            <p style={{ margin: '1px 0 0', fontSize: 12.5, color: '#A8A29E' }}>{subject.job_title || '—'}</p>
           </div>
         </div>
-      )}
-
-      {!action.subject && (
+      ) : (
         <p style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.02em' }}>
           Tu autoevaluación
         </p>
       )}
 
       <p style={{ margin: '0 0 16px', fontSize: 13.5, color: '#78716C', lineHeight: 1.55 }}>
-        {action.description}
+        {descriptions[review.type] || ''}
       </p>
 
       {/* Progress + CTA */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ flex: 1 }}>
           {hasProgress ? (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 11.5, color: '#A8A29E' }}>Sección {action.progress} de {action.totalSections}</span>
-                <span style={{ fontSize: 11.5, color: '#A8A29E' }}>{pct}%</span>
-              </div>
-              <div style={{ height: 3, background: '#F5F5F4', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: '#0C0A09', borderRadius: 3 }} />
-              </div>
-            </>
+            <span style={{ fontSize: 12.5, color: '#A8A29E' }}>En progreso</span>
           ) : (
             <span style={{ fontSize: 12.5, color: '#D6D3D1' }}>Sin empezar</span>
           )}
@@ -200,82 +150,119 @@ function ActionCard({ action, onClick }) {
           {hasProgress ? 'Continuar' : 'Comenzar'}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-export default function MyReviewsClient({ user, profile }) {
+export default function MyReviewsClient({ user, profile, pendingReviews = [], completedReviews = [] }) {
   const router = useRouter();
-  const userName = user?.email?.split('@')[0] || 'Usuario';
 
-  const handleActionClick = (action) => {
-    if (action.type === 'self') {
-      router.push(`/review-cycles/${action.cycleId}/self-assessment`);
+  const handleReviewClick = (review) => {
+    const cycleId = review.cycle_id;
+    if (review.type === 'self') {
+      router.push(`/review-cycles/${cycleId}/self-assessment`);
     } else {
-      router.push(`/review-cycles/${action.cycleId}/review/${action.subject?.id || 1}`);
+      router.push(`/review-cycles/${cycleId}/review/${review.reviewee_id}`);
     }
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F5F4' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F5F4', fontFamily: 'system-ui, -apple-system, sans-serif', WebkitFontSmoothing: 'antialiased' }}>
       <Sidebar user={user} profile={profile} />
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 40px 80px' }}>
 
           {/* Header */}
-          <div style={{ marginBottom: 40 }}>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+            style={{ marginBottom: 40 }}
+          >
             <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.03em' }}>
               Mis revisiones
             </h1>
             <p style={{ margin: 0, fontSize: 14, color: '#78716C' }}>
-              Tenés {PENDING_ACTIONS.length} acción{PENDING_ACTIONS.length !== 1 ? 'es' : ''} pendiente{PENDING_ACTIONS.length !== 1 ? 's' : ''} en el ciclo actual.
+              {pendingReviews.length > 0
+                ? `Tenés ${pendingReviews.length} acción${pendingReviews.length !== 1 ? 'es' : ''} pendiente${pendingReviews.length !== 1 ? 's' : ''}.`
+                : 'No tenés revisiones pendientes por ahora.'}
             </p>
-          </div>
+          </motion.div>
 
           {/* Pending */}
-          {PENDING_ACTIONS.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <h2 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Pendientes
-                </h2>
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 10,
-                  background: '#0C0A09', color: '#FFFFFF',
-                }}>
-                  {PENDING_ACTIONS.length}
-                </span>
+          <AnimatePresence>
+            {pendingReviews.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ marginBottom: 48 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <h2 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Pendientes
+                  </h2>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 10,
+                    background: '#0C0A09', color: '#FFFFFF',
+                  }}>
+                    {pendingReviews.length}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {pendingReviews.map((review, i) => (
+                    <motion.div
+                      key={review.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 + i * 0.05 }}
+                    >
+                      <ActionCard review={review} onClick={() => handleReviewClick(review)} />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+
+          {/* Empty pending state */}
+          {pendingReviews.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              style={{
+                background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 14,
+                padding: '48px 24px', textAlign: 'center', marginBottom: 48,
+              }}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {PENDING_ACTIONS.map((action) => (
-                  <ActionCard
-                    key={action.id}
-                    action={action}
-                    onClick={() => handleActionClick(action)}
-                  />
-                ))}
-              </div>
-            </section>
+              <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 500, color: '#0C0A09' }}>Todo al día</p>
+              <p style={{ margin: 0, fontSize: 13.5, color: '#A8A29E' }}>No tenés revisiones pendientes en este momento.</p>
+            </motion.div>
           )}
 
           {/* Completed */}
-          {COMPLETED_ACTIONS.length > 0 && (
-            <section>
+          {completedReviews.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+            >
               <h2 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Completadas
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 12, overflow: 'hidden' }}>
-                {COMPLETED_ACTIONS.map((action, i) => {
-                  const tc = TYPE_CONFIG[action.type];
+                {completedReviews.map((review, i) => {
+                  const tc = TYPE_CONFIG[review.type] || TYPE_CONFIG.manager;
+                  const cycle = review.review_cycles;
+                  const subject = review.type !== 'self' ? review.profiles : null;
                   return (
-                    <div
-                      key={action.id}
-                      onClick={() => router.push(`/review-cycles/${action.cycleId}`)}
+                    <motion.div
+                      key={review.id}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 + i * 0.03 }}
+                      onClick={() => router.push(`/review-cycles/${review.cycle_id}`)}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '14px 20px', cursor: 'pointer', transition: 'background 0.1s',
-                        borderBottom: i < COMPLETED_ACTIONS.length - 1 ? '1px solid #FAFAF9' : 'none',
+                        borderBottom: i < completedReviews.length - 1 ? '1px solid #FAFAF9' : 'none',
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#FAFAF9'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -284,13 +271,13 @@ export default function MyReviewsClient({ user, profile }) {
                         <span style={{ color: '#D6D3D1' }}>{tc.icon}</span>
                         <div>
                           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: '#292524' }}>
-                            {action.type === 'self' ? 'Autoevaluación' : action.subject?.name}
+                            {review.type === 'self' ? 'Autoevaluación' : subject?.full_name || '—'}
                           </p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#A8A29E' }}>{action.cycle}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#A8A29E' }}>{cycle?.name || '—'}</p>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: '#A8A29E' }}>{action.completedAt}</span>
+                        <span style={{ fontSize: 12, color: '#A8A29E' }}>{fmtDate(review.submitted_at)}</span>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                           fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20,
@@ -302,12 +289,13 @@ export default function MyReviewsClient({ user, profile }) {
                           Enviada
                         </span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
-            </section>
+            </motion.section>
           )}
+
         </div>
       </div>
     </div>
