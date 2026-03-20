@@ -103,12 +103,14 @@ export default function AdminClient({ currentUser, users: initialUsers, profile 
           >
             {[
               { key: 'users', label: 'Usuarios' },
+              { key: 'employees', label: 'Empleados' },
               { key: 'templates', label: 'Plantillas de evaluación' },
             ].map((t) => {
               const active = activeTab === t.key;
               return (
                 <button key={t.key} onClick={() => {
                   if (t.key === 'templates') router.push('/admin/templates');
+                  else if (t.key === 'employees') router.push('/admin/employees');
                   else setActiveTab(t.key);
                 }} style={{
                   padding: '10px 4px', marginRight: 20, border: 'none',
