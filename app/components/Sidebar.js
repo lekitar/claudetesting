@@ -38,12 +38,27 @@ const NAV = [
   },
 ];
 
+const ADMIN_NAV = [
+  {
+    href: '/people',
+    label: 'Personas',
+    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  },
+  {
+    href: '/admin',
+    label: 'Administración',
+    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    superAdminOnly: true,
+  },
+];
+
 export default function Sidebar({ user, profile }) {
   const router = useRouter();
   const pathname = usePathname();
   const [signingOut, setSigningOut] = useState(false);
 
   const isSuperAdmin = profile?.role === 'super_admin';
+  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'hr_admin';
   const userName = profile?.full_name || user?.email?.split('@')[0] || 'Usuario';
   const initials = userName.slice(0, 2).toUpperCase();
 
@@ -115,29 +130,31 @@ export default function Sidebar({ user, profile }) {
           );
         })}
 
-        {isSuperAdmin && (
+        {isAdmin && (
           <>
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
-            <motion.button
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
-              onClick={() => router.push('/admin')}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 7, border: 'none',
-                background: isActive('/admin') ? 'rgba(255,255,255,0.09)' : 'transparent',
-                color: isActive('/admin') ? '#FFFFFF' : '#6B6B6B',
-                fontSize: 13.5, fontWeight: 400, cursor: 'pointer', width: '100%', textAlign: 'left',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#A8A29E'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = isActive('/admin') ? 'rgba(255,255,255,0.09)' : 'transparent'; e.currentTarget.style.color = isActive('/admin') ? '#FFFFFF' : '#6B6B6B'; }}
-            >
-              <span style={{ opacity: 0.55 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-              </span>
-              Administración
-            </motion.button>
+            {ADMIN_NAV.filter(item => !item.superAdminOnly || isSuperAdmin).map((item, i) => {
+              const active = isActive(item.href);
+              return (
+                <motion.button
+                  key={item.href}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 + i * 0.04 }}
+                  onClick={() => router.push(item.href)}
+                  whileTap={{ scale: 0.98 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 7, border: 'none',
+                    background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
+                    color: active ? '#FFFFFF' : '#6B6B6B',
+                    fontSize: 13.5, fontWeight: active ? 500 : 400, cursor: 'pointer', width: '100%', textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#A8A29E'; } }}
+                  onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B6B6B'; } }}
+                >
+                  <span style={{ opacity: active ? 1 : 0.55 }}>{item.icon}</span>
+                  {item.label}
+                </motion.button>
+              );
+            })}
           </>
         )}
       </nav>
