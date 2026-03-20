@@ -1,6 +1,8 @@
+import './globals.css';
+
 export const metadata = {
-  title: 'Hola Mundo',
-  description: 'Hello World app deployed on Vercel',
+  title: 'PerformIQ — Performance Review Platform',
+  description: 'Modern performance review and employee development platform',
 };
 
 export default function RootLayout({ children }) {
