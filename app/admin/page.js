@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import DashboardClient from './DashboardClient';
+import AdminClient from './AdminClient';
 
-export default async function DashboardPage() {
+export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -14,5 +14,9 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  return <DashboardClient user={user} profile={profile} />;
+  if (profile?.role !== 'super_admin') redirect('/dashboard');
+
+  const { data: users, error } = await supabase.rpc('admin_get_all_users');
+
+  return <AdminClient currentUser={user} users={users || []} />;
 }
