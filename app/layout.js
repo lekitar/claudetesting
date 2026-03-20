@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'PerformIQ — Performance Review Platform',
-  description: 'Modern performance review and employee development platform',
+  title: 'Condor Agency Performance Review',
+  description: 'Plataforma de evaluación de desempeño de Condor Agency',
 };
 
 export default function RootLayout({ children }) {

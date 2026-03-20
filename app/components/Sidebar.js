@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 
 const NAV = [
@@ -43,7 +44,7 @@ export default function Sidebar({ user, profile }) {
   const [signingOut, setSigningOut] = useState(false);
 
   const isSuperAdmin = profile?.role === 'super_admin';
-  const userName = user?.email?.split('@')[0] || 'Usuario';
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'Usuario';
   const initials = userName.slice(0, 2).toUpperCase();
 
   const handleSignOut = async () => {
@@ -58,122 +59,110 @@ export default function Sidebar({ user, profile }) {
     pathname === href || (href !== '/dashboard' && pathname?.startsWith(href));
 
   return (
-    <aside style={{
-      width: 224,
-      flexShrink: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#111110',
-      minHeight: '100vh',
-      position: 'sticky',
-      top: 0,
-    }}>
+    <motion.aside
+      initial={{ x: -16, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        width: 224, flexShrink: 0, display: 'flex', flexDirection: 'column',
+        background: '#111110', minHeight: '100vh', position: 'sticky', top: 0,
+      }}
+    >
       {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: '#FFFFFF',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 28, height: 28, borderRadius: 8, background: '#FFFFFF',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#111110" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span style={{ fontWeight: 600, fontSize: 15, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-            PerformIQ
-          </span>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Condor</p>
+            <p style={{ margin: 0, fontSize: 10, color: '#4B4945', lineHeight: 1.2, letterSpacing: '0.02em' }}>Performance Review</p>
+          </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {NAV.map((item) => {
+      <nav style={{ flex: 1, padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {NAV.map((item, i) => {
           const active = isActive(item.href);
           return (
-            <button
+            <motion.button
               key={item.href}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.05 + i * 0.04, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               onClick={() => router.push(item.href)}
+              whileTap={{ scale: 0.98 }}
               style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '7px 10px',
-                borderRadius: 7,
-                border: 'none',
+                display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px',
+                borderRadius: 7, border: 'none',
                 background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
                 color: active ? '#FFFFFF' : '#6B6B6B',
-                fontSize: 13.5,
-                fontWeight: active ? 500 : 400,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                transition: 'background 0.1s, color 0.1s',
+                fontSize: 13.5, fontWeight: active ? 500 : 400, cursor: 'pointer',
+                width: '100%', textAlign: 'left',
               }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.color = '#A8A29E';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#6B6B6B';
-                }
-              }}
+              onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#A8A29E'; } }}
+              onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B6B6B'; } }}
             >
-              <span style={{ opacity: active ? 1 : 0.6 }}>{item.icon}</span>
+              <span style={{ opacity: active ? 1 : 0.55 }}>{item.icon}</span>
               {item.label}
-            </button>
+            </motion.button>
           );
         })}
 
         {isSuperAdmin && (
           <>
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
-            <button
+            <motion.button
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
               onClick={() => router.push('/admin')}
+              whileTap={{ scale: 0.98 }}
               style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '7px 10px', borderRadius: 7, border: 'none',
+                display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 7, border: 'none',
                 background: isActive('/admin') ? 'rgba(255,255,255,0.09)' : 'transparent',
                 color: isActive('/admin') ? '#FFFFFF' : '#6B6B6B',
                 fontSize: 13.5, fontWeight: 400, cursor: 'pointer', width: '100%', textAlign: 'left',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#A8A29E'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B6B6B'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = isActive('/admin') ? 'rgba(255,255,255,0.09)' : 'transparent'; e.currentTarget.style.color = isActive('/admin') ? '#FFFFFF' : '#6B6B6B'; }}
             >
-              <span style={{ opacity: 0.6 }}>
+              <span style={{ opacity: 0.55 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
               </span>
-              Admin
-            </button>
+              Administración
+            </motion.button>
           </>
         )}
       </nav>
 
       {/* User */}
-      <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+        style={{ padding: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px', borderRadius: 7 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: '#292524',
-            border: '1px solid rgba(255,255,255,0.1)',
+            width: 28, height: 28, borderRadius: '50%', background: '#292524',
+            border: '1px solid rgba(255,255,255,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 600, color: '#A8A29E', flexShrink: 0,
+            fontSize: 11, fontWeight: 600, color: '#78716C', flexShrink: 0,
           }}>
             {initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#D6D3D1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 500, color: '#D6D3D1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {userName}
             </p>
           </div>
           <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            title="Cerrar sesión"
+            onClick={handleSignOut} disabled={signingOut} title="Cerrar sesión"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4B4945', padding: 2, display: 'flex', alignItems: 'center' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#78716C'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#4B4945'}
@@ -184,7 +173,7 @@ export default function Sidebar({ user, profile }) {
             </svg>
           </button>
         </div>
-      </div>
-    </aside>
+      </motion.div>
+    </motion.aside>
   );
 }
