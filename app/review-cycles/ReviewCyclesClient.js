@@ -1,533 +1,215 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/app/components/Sidebar';
 
-const MOCK_CYCLES = [
-  {
-    id: 1,
-    name: 'Q1 Performance Review 2026',
-    type: 'Trimestral',
-    startDate: '2026-03-01',
-    endDate: '2026-03-31',
-    status: 'active',
-    participants: 138,
-    completed: 89,
-    description: 'Evaluación de desempeño del primer trimestre 2026.',
-  },
-  {
-    id: 2,
-    name: 'Mid-Year Review 2026',
-    type: 'Semestral',
-    startDate: '2026-06-01',
-    endDate: '2026-06-30',
-    status: 'draft',
-    participants: 0,
-    completed: 0,
-    description: 'Revisión de medio año con énfasis en objetivos y desarrollo.',
-  },
-  {
-    id: 3,
-    name: 'Evaluación Anual 2025',
-    type: 'Anual',
-    startDate: '2025-12-01',
-    endDate: '2025-12-31',
-    status: 'completed',
-    participants: 135,
-    completed: 135,
-    description: 'Evaluación anual de desempeño y competencias del equipo.',
-  },
-  {
-    id: 4,
-    name: 'Q3 Performance Review 2025',
-    type: 'Trimestral',
-    startDate: '2025-09-01',
-    endDate: '2025-09-30',
-    status: 'completed',
-    participants: 130,
-    completed: 127,
-    description: 'Evaluación trimestral Q3 2025.',
-  },
-  {
-    id: 5,
-    name: 'Q2 Peer Feedback 2026',
-    type: 'Trimestral',
-    startDate: '2026-07-01',
-    endDate: '2026-07-31',
-    status: 'draft',
-    participants: 0,
-    completed: 0,
-    description: 'Ciclo de feedback entre pares para el Q2.',
-  },
+const CYCLES = [
+  { id: 1, name: 'Q1 Performance Review 2026', type: 'Trimestral', start: '2026-03-01', end: '2026-03-31', status: 'active', participants: 138, completed: 89 },
+  { id: 2, name: 'Mid-Year Review 2026', type: 'Semestral', start: '2026-06-01', end: '2026-06-30', status: 'draft', participants: 0, completed: 0 },
+  { id: 3, name: 'Evaluación Anual 2025', type: 'Anual', start: '2025-12-01', end: '2025-12-31', status: 'completed', participants: 135, completed: 135 },
+  { id: 4, name: 'Q3 Review 2025', type: 'Trimestral', start: '2025-09-01', end: '2025-09-30', status: 'completed', participants: 130, completed: 127 },
+  { id: 5, name: 'Q2 Peer Feedback 2026', type: 'Trimestral', start: '2026-07-01', end: '2026-07-31', status: 'draft', participants: 0, completed: 0 },
 ];
 
-const STATUS_CONFIG = {
-  active: { label: 'Activo', bg: '#ECFDF5', color: '#059669', border: '#A7F3D0', dot: '#10B981' },
-  draft: { label: 'Borrador', bg: '#F9FAFB', color: '#6B7280', border: '#E5E7EB', dot: '#9CA3AF' },
-  completed: { label: 'Completado', bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', dot: '#3B82F6' },
-  archived: { label: 'Archivado', bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA', dot: '#F97316' },
+const STATUS = {
+  active: { label: 'Activo', color: '#15803D', bg: '#F0FDF4', dot: '#22C55E' },
+  draft: { label: 'Borrador', color: '#78716C', bg: '#F5F5F4', dot: '#A8A29E' },
+  completed: { label: 'Completado', color: '#1D4ED8', bg: '#EFF6FF', dot: '#3B82F6' },
 };
 
-const TYPE_CONFIG = {
-  'Anual': { bg: '#F5F3FF', color: '#6D28D9' },
-  'Semestral': { bg: '#EFF6FF', color: '#1D4ED8' },
-  'Trimestral': { bg: '#F0FDF4', color: '#15803D' },
+const TYPE_COLOR = {
+  Anual: '#7C3AED',
+  Semestral: '#0369A1',
+  Trimestral: '#065F46',
 };
 
-const FILTER_TABS = [
+const TABS = [
   { key: 'all', label: 'Todos' },
   { key: 'active', label: 'Activos' },
   { key: 'draft', label: 'Borradores' },
   { key: 'completed', label: 'Completados' },
 ];
 
-function ProgressBar({ completed, total }) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: '#E4E7EC' }}>
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${pct}%`,
-            background: pct === 100 ? '#059669' : '#4F46E5',
-          }}
-        />
-      </div>
-      <span className="text-xs tabular-nums" style={{ color: '#667085', minWidth: 32 }}>
-        {pct}%
-      </span>
-    </div>
-  );
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function CreateCycleModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({
-    name: '',
-    type: 'Trimestral',
-    startDate: '',
-    endDate: '',
-    description: '',
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.name || !form.startDate || !form.endDate) return;
-    onCreate({
-      ...form,
-      id: Date.now(),
-      status: 'draft',
-      participants: 0,
-      completed: 0,
-    });
-    onClose();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(16, 24, 40, 0.4)' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="w-full max-w-lg rounded-2xl shadow-xl"
-        style={{ background: '#FFFFFF', border: '1px solid #E4E7EC' }}
-      >
-        {/* Modal header */}
-        <div className="px-6 py-5" style={{ borderBottom: '1px solid #E4E7EC' }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: '#101828' }}>
-                Crear ciclo de evaluación
-              </h2>
-              <p className="text-sm mt-0.5" style={{ color: '#667085' }}>
-                Define los parámetros del nuevo ciclo
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-              style={{ color: '#98A2B3' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#667085'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#98A2B3'; }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: '#344054' }}>
-              Nombre del ciclo <span style={{ color: '#F04438' }}>*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Q2 Performance Review 2026"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all"
-              style={{
-                border: '1px solid #D0D5DD',
-                color: '#101828',
-                background: '#FFFFFF',
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-              onBlur={(e) => e.target.style.borderColor = '#D0D5DD'}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: '#344054' }}>
-              Tipo de evaluación
-            </label>
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all"
-              style={{
-                border: '1px solid #D0D5DD',
-                color: '#101828',
-                background: '#FFFFFF',
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-              onBlur={(e) => e.target.style.borderColor = '#D0D5DD'}
-            >
-              <option>Trimestral</option>
-              <option>Semestral</option>
-              <option>Anual</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: '#344054' }}>
-                Fecha de inicio <span style={{ color: '#F04438' }}>*</span>
-              </label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all"
-                style={{ border: '1px solid #D0D5DD', color: '#101828', background: '#FFFFFF' }}
-                onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-                onBlur={(e) => e.target.style.borderColor = '#D0D5DD'}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: '#344054' }}>
-                Fecha de fin <span style={{ color: '#F04438' }}>*</span>
-              </label>
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all"
-                style={{ border: '1px solid #D0D5DD', color: '#101828', background: '#FFFFFF' }}
-                onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-                onBlur={(e) => e.target.style.borderColor = '#D0D5DD'}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: '#344054' }}>
-              Descripción <span className="font-normal" style={{ color: '#98A2B3' }}>(opcional)</span>
-            </label>
-            <textarea
-              placeholder="Describe el objetivo de este ciclo de evaluación..."
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-              className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all resize-none"
-              style={{ border: '1px solid #D0D5DD', color: '#101828', background: '#FFFFFF' }}
-              onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-              onBlur={(e) => e.target.style.borderColor = '#D0D5DD'}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ background: '#FFFFFF', border: '1px solid #D0D5DD', color: '#344054' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#FFFFFF'}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ background: '#4F46E5', color: '#FFFFFF' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#4338CA'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#4F46E5'}
-            >
-              Crear ciclo
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+function fmt(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function ReviewCyclesClient({ user, profile }) {
-  const [cycles, setCycles] = useState(MOCK_CYCLES);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
+  const [cycles, setCycles] = useState(CYCLES);
+  const [tab, setTab] = useState('all');
 
-  const filtered = activeFilter === 'all'
-    ? cycles
-    : cycles.filter((c) => c.status === activeFilter);
-
-  const handleCreate = (newCycle) => {
-    setCycles((prev) => [newCycle, ...prev]);
-    setActiveFilter('draft');
-  };
-
-  const activeCycles = cycles.filter((c) => c.status === 'active');
-  const totalParticipants = cycles.reduce((sum, c) => sum + c.participants, 0);
-  const avgCompletion = cycles.filter(c => c.participants > 0).reduce((sum, c) => {
-    return sum + Math.round((c.completed / c.participants) * 100);
-  }, 0) / (cycles.filter(c => c.participants > 0).length || 1);
+  const filtered = tab === 'all' ? cycles : cycles.filter(c => c.status === tab);
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#F7F8FA', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F5F4' }}>
       <Sidebar user={user} profile={profile} />
 
-      <div className="flex-1 overflow-auto">
-        {/* Header */}
-        <header
-          className="sticky top-0 z-10 px-8 py-4 flex items-center justify-between"
-          style={{ background: '#FFFFFF', borderBottom: '1px solid #E4E7EC' }}
-        >
-          <div>
-            <h1 className="text-lg font-semibold" style={{ color: '#101828' }}>Ciclos de evaluación</h1>
-            <p className="text-sm" style={{ color: '#667085' }}>
-              {activeCycles.length} ciclo{activeCycles.length !== 1 ? 's' : ''} activo{activeCycles.length !== 1 ? 's' : ''} · {cycles.length} en total
-            </p>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 40px' }}>
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 36 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.03em' }}>
+                Ciclos de evaluación
+              </h1>
+              <p style={{ margin: '6px 0 0', fontSize: 14, color: '#78716C' }}>
+                {cycles.filter(c => c.status === 'active').length} activos · {cycles.length} en total
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/review-cycles/new')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 16px', borderRadius: 8, border: 'none',
+                background: '#0C0A09', color: '#FFFFFF',
+                fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#292524'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#0C0A09'}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Nuevo ciclo
+            </button>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ background: '#4F46E5', color: '#FFFFFF' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#4338CA'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#4F46E5'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Crear ciclo
-          </button>
-        </header>
 
-        <div className="p-8 space-y-6">
-
-          {/* Summary stats */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Summary cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 32 }}>
             {[
-              { label: 'Ciclos activos', value: activeCycles.length, sub: 'en este momento' },
-              { label: 'Total participantes', value: totalParticipants.toLocaleString('es'), sub: 'en todos los ciclos' },
-              { label: 'Tasa de completitud', value: `${Math.round(avgCompletion)}%`, sub: 'promedio general' },
+              { val: cycles.filter(c => c.status === 'active').length, label: 'Ciclos activos', hint: 'en este momento' },
+              { val: cycles.reduce((s, c) => s + c.participants, 0), label: 'Participantes totales', hint: 'acumulado histórico' },
+              {
+                val: (() => {
+                  const withData = cycles.filter(c => c.participants > 0);
+                  return withData.length ? Math.round(withData.reduce((s, c) => s + (c.completed / c.participants) * 100, 0) / withData.length) + '%' : '—';
+                })(),
+                label: 'Completitud promedio',
+                hint: 'de todos los ciclos',
+              },
             ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl px-6 py-5"
-                style={{ background: '#FFFFFF', border: '1px solid #E4E7EC' }}
-              >
-                <p className="text-2xl font-bold mb-1" style={{ color: '#101828' }}>{s.value}</p>
-                <p className="text-sm font-medium" style={{ color: '#344054' }}>{s.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#98A2B3' }}>{s.sub}</p>
+              <div key={s.label} style={{ background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 12, padding: '20px 20px 18px' }}>
+                <p style={{ margin: '0 0 8px', fontSize: 28, fontWeight: 600, color: '#0C0A09', letterSpacing: '-0.04em' }}>{s.val}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#292524' }}>{s.label}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#A8A29E' }}>{s.hint}</p>
               </div>
             ))}
           </div>
 
-          {/* Filter tabs + list */}
-          <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E7EC' }}>
+          {/* Table card */}
+          <div style={{ background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: 12, overflow: 'hidden' }}>
+
             {/* Tabs */}
-            <div
-              className="px-6 flex items-center gap-1"
-              style={{ borderBottom: '1px solid #E4E7EC' }}
-            >
-              {FILTER_TABS.map((tab) => {
-                const count = tab.key === 'all' ? cycles.length : cycles.filter(c => c.status === tab.key).length;
-                const isActive = activeFilter === tab.key;
+            <div style={{ padding: '0 24px', borderBottom: '1px solid #F5F5F4', display: 'flex', gap: 0 }}>
+              {TABS.map((t) => {
+                const count = t.key === 'all' ? cycles.length : cycles.filter(c => c.status === t.key).length;
+                const active = tab === t.key;
                 return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveFilter(tab.key)}
-                    className="flex items-center gap-1.5 px-1 py-3.5 text-sm font-medium transition-colors relative"
-                    style={{
-                      color: isActive ? '#4F46E5' : '#667085',
-                      borderBottom: isActive ? '2px solid #4F46E5' : '2px solid transparent',
-                      marginBottom: -1,
-                    }}
-                  >
-                    {tab.label}
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded-full"
-                      style={{
-                        background: isActive ? '#EEF2FF' : '#F2F4F7',
-                        color: isActive ? '#4F46E5' : '#98A2B3',
-                      }}
-                    >
-                      {count}
-                    </span>
+                  <button key={t.key} onClick={() => setTab(t.key)} style={{
+                    padding: '14px 4px', marginRight: 20,
+                    border: 'none', borderBottom: active ? '2px solid #0C0A09' : '2px solid transparent',
+                    background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 13.5, fontWeight: active ? 600 : 400,
+                    color: active ? '#0C0A09' : '#78716C',
+                    marginBottom: -1,
+                  }}>
+                    {t.label}
+                    <span style={{
+                      fontSize: 11, padding: '1px 6px', borderRadius: 10,
+                      background: active ? '#F5F5F4' : '#FAFAF9',
+                      color: active ? '#0C0A09' : '#A8A29E',
+                      fontWeight: 500,
+                    }}>{count}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Table header */}
-            <div
-              className="grid px-6 py-2.5 text-xs font-medium"
-              style={{
-                gridTemplateColumns: '2fr 110px 200px 160px 120px 100px',
-                background: '#F9FAFB',
-                borderBottom: '1px solid #E4E7EC',
-                color: '#667085',
-              }}
-            >
-              <span>Ciclo</span>
-              <span>Tipo</span>
-              <span>Período</span>
-              <span>Progreso</span>
-              <span>Estado</span>
-              <span className="text-right">Acciones</span>
+            {/* Table head */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '2fr 100px 200px 170px 110px 80px',
+              padding: '9px 24px', background: '#FAFAF9', borderBottom: '1px solid #F5F5F4',
+              fontSize: 11.5, fontWeight: 500, color: '#A8A29E', letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}>
+              <span>Ciclo</span><span>Tipo</span><span>Período</span><span>Progreso</span><span>Estado</span><span />
             </div>
 
             {/* Rows */}
             {filtered.length === 0 ? (
-              <div className="py-16 text-center">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: '#F2F4F7' }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
-                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                  </svg>
-                </div>
-                <p className="text-sm font-medium" style={{ color: '#344054' }}>No hay ciclos en esta categoría</p>
-                <p className="text-sm mt-1" style={{ color: '#98A2B3' }}>Crea un nuevo ciclo para empezar</p>
+              <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+                <p style={{ margin: 0, fontSize: 14, color: '#A8A29E' }}>No hay ciclos en esta categoría</p>
               </div>
-            ) : (
-              filtered.map((cycle, i) => {
-                const st = STATUS_CONFIG[cycle.status];
-                const tp = TYPE_CONFIG[cycle.type] || { bg: '#F2F4F7', color: '#667085' };
-                const isLast = i === filtered.length - 1;
+            ) : filtered.map((c, i) => {
+              const st = STATUS[c.status];
+              const pct = c.participants > 0 ? Math.round((c.completed / c.participants) * 100) : 0;
+              const typeColor = TYPE_COLOR[c.type] || '#78716C';
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '2fr 100px 200px 170px 110px 80px',
+                    padding: '15px 24px', alignItems: 'center', cursor: 'pointer',
+                    borderBottom: i < filtered.length - 1 ? '1px solid #FAFAF9' : 'none',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#FAFAF9'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => router.push(`/review-cycles/${c.id}`)}
+                >
+                  <span style={{ fontSize: 13.5, fontWeight: 500, color: '#0C0A09' }}>{c.name}</span>
 
-                return (
-                  <div
-                    key={cycle.id}
-                    className="grid px-6 py-4 items-center transition-colors cursor-pointer"
-                    style={{
-                      gridTemplateColumns: '2fr 110px 200px 160px 120px 100px',
-                      borderBottom: isLast ? 'none' : '1px solid #F2F4F7',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {/* Name */}
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: '#101828' }}>{cycle.name}</p>
-                      {cycle.description && (
-                        <p className="text-xs mt-0.5 truncate max-w-xs" style={{ color: '#98A2B3' }}>
-                          {cycle.description}
-                        </p>
-                      )}
-                    </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: typeColor }}>{c.type}</span>
 
-                    {/* Type */}
-                    <span
-                      className="inline-flex text-xs font-medium px-2.5 py-1 rounded-full w-fit"
-                      style={{ background: tp.bg, color: tp.color }}
-                    >
-                      {cycle.type}
-                    </span>
+                  <span style={{ fontSize: 13, color: '#78716C' }}>
+                    {fmt(c.start)} – {fmt(c.end)}
+                  </span>
 
-                    {/* Period */}
-                    <span className="text-sm" style={{ color: '#667085' }}>
-                      {formatDate(cycle.startDate)} – {formatDate(cycle.endDate)}
-                    </span>
-
-                    {/* Progress */}
-                    <div>
-                      {cycle.participants > 0 ? (
-                        <>
-                          <ProgressBar completed={cycle.completed} total={cycle.participants} />
-                          <p className="text-xs mt-1" style={{ color: '#98A2B3' }}>
-                            {cycle.completed} / {cycle.participants} participantes
-                          </p>
-                        </>
-                      ) : (
-                        <span className="text-sm" style={{ color: '#D0D5DD' }}>Sin asignar</span>
-                      )}
-                    </div>
-
-                    {/* Status */}
-                    <span>
-                      <span
-                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
-                        style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: st.dot }}
-                        />
-                        {st.label}
-                      </span>
-                    </span>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-                        style={{ color: '#4F46E5' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#EEF2FF'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                      >
-                        Ver
-                      </button>
-                      <button
-                        className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                        style={{ color: '#98A2B3' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F2F4F7'; e.currentTarget.style.color = '#667085'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#98A2B3'; }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
-                        </svg>
-                      </button>
-                    </div>
+                  <div>
+                    {c.participants > 0 ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, height: 4, background: '#F5F5F4', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#15803D' : '#0C0A09', borderRadius: 4 }} />
+                          </div>
+                          <span style={{ fontSize: 12, color: '#78716C', minWidth: 28 }}>{pct}%</span>
+                        </div>
+                        <span style={{ fontSize: 11.5, color: '#A8A29E' }}>{c.completed}/{c.participants}</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 13, color: '#D6D3D1' }}>Sin asignar</span>
+                    )}
                   </div>
-                );
-              })
-            )}
+
+                  <span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 20,
+                      background: st.bg, color: st.color,
+                    }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot, flexShrink: 0 }} />
+                      {st.label}
+                    </span>
+                  </span>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      style={{ fontSize: 12.5, fontWeight: 500, color: '#0C0A09', background: 'none', border: '1px solid #E7E5E4', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#F5F5F4'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                      onClick={(e) => { e.stopPropagation(); router.push(`/review-cycles/${c.id}`); }}
+                    >
+                      Ver
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
-
-      {showModal && (
-        <CreateCycleModal
-          onClose={() => setShowModal(false)}
-          onCreate={handleCreate}
-        />
-      )}
     </div>
   );
 }
