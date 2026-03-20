@@ -20,7 +20,8 @@ export default async function NewCyclePage() {
 
   const { data: employees } = await supabase
     .from('profiles')
-    .select('id, full_name, job_title, department')
+    .select('id, full_name, job_title, department, manager_id')
+    .eq('is_active', true)
     .order('full_name', { ascending: true });
 
   return <NewCycleClient user={user} profile={profile} templates={templates || []} employees={employees || []} />;
